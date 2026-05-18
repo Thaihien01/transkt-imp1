@@ -11,9 +11,7 @@ from utils.GraphMaker import GraphMaker
 import os
 from datetime import timedelta
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-# Patch for CPU-only execution on AMD GPU/CPU machines
-torch.Tensor.cuda = lambda self, *args, **kwargs: self
-torch.nn.Module.cuda = lambda self, *args, **kwargs: self
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--warm_epoch', type=int, default=0, help='epochs for only predicate loss')
