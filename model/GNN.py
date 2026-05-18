@@ -27,13 +27,15 @@ class GCNLayer(nn.Module):
                 alpha=opt["leakey"]))
 
         self.encoder = nn.ModuleList(self.encoder)
+        self.layernorms = nn.ModuleList([nn.LayerNorm(opt["hidden_units"]) for _ in range(self.layer_number)])
 
     def forward(self, fea, adj):
         learn_fea = fea
         tmp_fea = fea
-        for layer in self.encoder:
+        for layer, layernorm in zip(self.encoder, self.layernorms):
             learn_fea = F.dropout(learn_fea, self.dropout, training=self.training)
             learn_fea = layer(learn_fea, adj)
+            learn_fea = layernorm(learn_fea)
             tmp_fea = tmp_fea + learn_fea
         return tmp_fea / (self.layer_number + 1)
 
@@ -47,6 +49,7 @@ class GNN(nn.Module):
 
     def forward(self, x, adj):
         x = self.gc1(x, adj)
+        x = self.leakyrelu(x)
         return x
 
 
@@ -75,7 +78,7 @@ class GraphConvolution(Module):
         return nn.Parameter(initial / 2)
 
     def forward(self, input, adj):
-        support = input
+        support = torch.matmul(input, self.weight)
         output = torch.spmm(adj, support)
         if self.bias is not None:
             return output + self.bias

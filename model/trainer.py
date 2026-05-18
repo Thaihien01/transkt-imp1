@@ -90,6 +90,7 @@ class TransKTtainer(Trainer):
             self.CS_criterion.cuda()
             self.NCE_criterion.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.model.parameters(), opt['lr'],opt['weight_decay'])
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=opt['num_epoch'])
 
     def unpack_batch_ps(self, batch):
         if self.opt["device"]=="cuda":
@@ -243,8 +244,11 @@ class TransKTtainer(Trainer):
         maxproblem=self.opt['maxproblem']
         
         
-        single_x=(l2*H_X+(1-l2)*H)
-        single_y=(l2*H_Y+(1-l2)*H)
+        gate_x = self.model.fusion_gate_x(torch.cat([H_X, H], dim=-1))
+        single_x = gate_x * H_X + (1 - gate_x) * H
+        
+        gate_y = self.model.fusion_gate_y(torch.cat([H_Y, H], dim=-1))
+        single_y = gate_y * H_Y + (1 - gate_y) * H
         
         concat_x=torch.cat([single_x,p_x_emb],dim=-1)
         concat_y=torch.cat([single_y,p_y_emb],dim=-1)
@@ -268,7 +272,10 @@ class TransKTtainer(Trainer):
         x_ground_mask_select=torch.masked_select(set_rx,set_x_mask.bool())
         predicat_y_mask_select=torch.masked_select(predicate_y,set_y_mask.bool())
         y_ground_mask_select=torch.masked_select(set_ry,set_y_mask.bool())
-        loss1 =  self.BCE_criterion(predicat_x_mask_select, x_ground_mask_select.float())+self.BCE_criterion(predicat_y_mask_select, y_ground_mask_select.float())
+        
+        x_target = x_ground_mask_select.float() * 0.9 + 0.05
+        y_target = y_ground_mask_select.float() * 0.9 + 0.05
+        loss1 = self.BCE_criterion(predicat_x_mask_select, x_target) + self.BCE_criterion(predicat_y_mask_select, y_target)
         l1=self.opt['lambda']
         loss=loss1*l1
      
@@ -297,8 +304,11 @@ class TransKTtainer(Trainer):
         set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,re_p,re_r,first,last,x_first,x_last,y_first,y_last=self.unpack_batch_ps(batch)
         H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.model(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last)
         
-        single_x=(l2*H_X+(1-l2)*H)
-        single_y=(l2*H_Y+(1-l2)*H)
+        gate_x = self.model.fusion_gate_x(torch.cat([H_X, H], dim=-1))
+        single_x = gate_x * H_X + (1 - gate_x) * H
+        
+        gate_y = self.model.fusion_gate_y(torch.cat([H_Y, H], dim=-1))
+        single_y = gate_y * H_Y + (1 - gate_y) * H
         
         concat_x=torch.cat([single_x,p_x_emb],dim=-1)
         concat_y=torch.cat([single_y,p_y_emb],dim=-1)
