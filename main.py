@@ -11,6 +11,9 @@ from utils.GraphMaker import GraphMaker
 import os
 from datetime import timedelta
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+# Patch for CPU-only execution on AMD GPU/CPU machines
+torch.Tensor.cuda = lambda self, *args, **kwargs: self
+torch.nn.Module.cuda = lambda self, *args, **kwargs: self
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--warm_epoch', type=int, default=0, help='epochs for only predicate loss')
@@ -143,6 +146,7 @@ for seed in seed_pools:
             train_loss_pre+=loss_pre
             train_loss_im+=loss_im
             batch_count+=1
+        trainer.scheduler.step()
             
         print("epoch:",epoch,"train_loss:",train_loss_all/num_batch,"predicate_loss:",train_loss_pre/num_batch*(opt['lambda']),"im_loss:",train_loss_im/num_batch*(1-opt['lambda']))
 

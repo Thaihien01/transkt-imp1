@@ -100,6 +100,8 @@ class TransKT(torch.nn.Module):
         self.encoder_X=SimpleKT_Encoder(opt)
         self.encoder_Y=SimpleKT_Encoder(opt)
         self.BCE_criterion = nn.BCEWithLogitsLoss()
+        self.fusion_gate_x = nn.Sequential(nn.Linear(self.opt["hidden_units"] * 2, self.opt["hidden_units"]), nn.Sigmoid())
+        self.fusion_gate_y = nn.Sequential(nn.Linear(self.opt["hidden_units"] * 2, self.opt["hidden_units"]), nn.Sigmoid())
         self.D_X = torch.nn.Bilinear(self.opt["hidden_units"],self.opt["hidden_units"],1,bias=False)
         self.D_Y = torch.nn.Bilinear(self.opt["hidden_units"],self.opt["hidden_units"],1,bias=False)
         
